@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-HIVE Trading Signal Dashboard.
+HIVE Trading Signal Dashboard (Options + Equity — Tradier).
 
 Shows the current long/short regime for HIVE, the equity position target,
-and an advisory options overlay. BTC and QQQ are displayed as signal inputs only.
-No broker connection. No order execution.
+and the options overlay advisory. BTC and QQQ are displayed as signal inputs only.
+Options are executed via the Tradier runner. No broker connection from this app.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ from hive_strategy import (
 CLAUDE_MODEL = "claude-haiku-4-5"
 AI_SECTOR_SYMBOLS = ["NVDA", "MSFT", "GOOGL", "META", "AVGO", "AMD", "TSM", "MSTR"]
 
-st.set_page_config(page_title="HIVE Signal", page_icon="chart", layout="wide")
+st.set_page_config(page_title="HIVE Signal", page_icon="\U0001f4ca", layout="wide")
 st.markdown(
     """
     <style>
@@ -181,17 +181,17 @@ def build_brief_prompt(df: pd.DataFrame, sig: dict, news_items: list[dict]) -> s
     return f"""
 You are writing a concise weekly market brief for a private HIVE trading dashboard.
 The strategy trades only HIVE stock (long, short, or flat). QQQ and Bitcoin are used as
-signal inputs only. An options overlay is used on the HIVE position to harvest volatility premium.
+signal inputs only. An options overlay is executed on the HIVE position via Tradier.
 
 Do not give personalised financial advice. Explain the signal and risk posture in plain English.
 
 Current signal:
-- Regime: {sig['regime']} -- {sig['regime_description']}
+- Regime: {sig['regime']} — {sig['regime_description']}
 - HIVE equity action: {sig['equity_action']} at {pct(sig['equity_target_alloc'])} of account
 - Confidence: {sig['confidence']}
 - Reason: {sig['reason']}
 
-Options advisory:
+Options advisory (executed via Tradier):
 {options_summary}
 
 Key indicators:
@@ -208,7 +208,7 @@ Recent AI / Bitcoin / semiconductor headlines:
 
 Write exactly four short sections:
 1. Weekly read (BTC trend, QQQ health, what it means for HIVE)
-2. Current signal (equity + options -- what to do and why)
+2. Current signal (equity + options — what to do and why)
 3. Risk watch (what could break or flip the trade)
 4. What would change the signal
 """.strip()
@@ -253,19 +253,19 @@ def generate_brief(df: pd.DataFrame, sig: dict, news_items: list[dict]) -> str:
 
 def regime_color(regime: str) -> str:
     if "danger" in regime:
-        return "[RED]"
+        return "\U0001f534"
     if "bear" in regime:
-        return "[ORANGE]"
+        return "\U0001f7e0"
     if "flat" in regime or "btc_bear_qqq_firm" in regime:
-        return "[NEUTRAL]"
+        return "⚪"
     if "cautious" in regime or "soft" in regime:
-        return "[YELLOW]"
-    return "[GREEN]"
+        return "\U0001f7e1"
+    return "\U0001f7e2"
 
 
 def render_dashboard() -> None:
-    st.title("HIVE Signal Dashboard")
-    st.caption("Manual guide only. QQQ and BTC are signal inputs only -- HIVE is the only traded asset.")
+    st.title("HIVE Signal Dashboard — Options + Equity (Tradier)")
+    st.caption("Manual guide only. QQQ and BTC are signal inputs only — HIVE is the only traded asset. Options overlay executed via Tradier.")
 
     if st.button("Refresh market data"):
         st.cache_data.clear()
@@ -274,13 +274,13 @@ def render_dashboard() -> None:
     df  = build_data()
     sig = classify_signal(df.iloc[-1])
 
-    # Regime banner
+    # ── Regime banner ──────────────────────────────────────────────────────
     icon = regime_color(sig["regime"])
     st.subheader(f"{icon} {sig['regime_description']}")
     st.write(sig["reason"])
     st.caption(f"New York time: {sig['timestamp_ny']}")
 
-    # Equity allocation row
+    # ── Equity allocation row ──────────────────────────────────────────────
     alloc = sig["equity_target_alloc"]
     alloc_str = (
         f"LONG {alloc:.0%}" if alloc > 0
@@ -292,34 +292,34 @@ def render_dashboard() -> None:
     cols[2].metric("Confidence", sig["confidence"])
     cols[3].metric("VIX",        f"{sig['vix']:.2f}")
 
-    # HIVE indicators
+    # ── HIVE indicators ────────────────────────────────────────────────────
     rsi_val  = sig["hive_rsi14"]
-    rsi_flag = " [!] overbought" if sig["hive_rsi_overbought"] else (" [!] oversold" if sig["hive_rsi_oversold"] else "")
+    rsi_flag = " ⚠ overbought" if sig["hive_rsi_overbought"] else (" ⚠ oversold" if sig["hive_rsi_oversold"] else "")
     cols = st.columns(4)
-    cols[0].metric("HIVE",        f"${sig['hive']:.4f}")
-    cols[1].metric("HIVE MA20",   f"${sig['hive_ma20']:.4f}", "above" if sig["hive_above_ma20"] else "below")
+    cols[0].metric("HIVE",      f"${sig['hive']:.4f}")
+    cols[1].metric("HIVE MA20", f"${sig['hive_ma20']:.4f}", "above" if sig["hive_above_ma20"] else "below")
     cols[2].metric("HIVE RSI-14", f"{rsi_val:.0f}{rsi_flag}")
-    cols[3].metric("HIVE MA5",    f"${sig['hive_ma5']:.4f}")
+    cols[3].metric("HIVE MA5",  f"${sig['hive_ma5']:.4f}")
 
-    # Signal inputs (read-only)
+    # ── Signal inputs (read-only) ──────────────────────────────────────────
     st.divider()
     st.subheader("Signal Inputs (not traded)")
     cols = st.columns(4)
-    cols[0].metric("BTC",      f"${sig['btc']:,.0f}",      "above MA20" if sig["btc_above_ma20"] else "below MA20")
-    cols[1].metric("BTC MA20", f"${sig['btc_ma20']:,.0f}")
-    cols[2].metric("QQQ",      f"${sig['qqq']:.2f}",       "above MA50" if sig["qqq_above_ma50"] else "below MA50")
-    cols[3].metric("QQQ MA50", f"${sig['qqq_ma50']:.2f}")
+    cols[0].metric("BTC",     f"${sig['btc']:,.0f}", "above MA20" if sig["btc_above_ma20"] else "below MA20")
+    cols[1].metric("BTC MA20",f"${sig['btc_ma20']:,.0f}")
+    cols[2].metric("QQQ",     f"${sig['qqq']:.2f}", "above MA50" if sig["qqq_above_ma50"] else "below MA50")
+    cols[3].metric("QQQ MA50",f"${sig['qqq_ma50']:.2f}")
 
-    # Options advisory
+    # ── Options advisory ───────────────────────────────────────────────────
     st.divider()
     st.subheader("Options Advisory")
-    st.caption("Advisory only -- not executed by the paper runner.")
+    st.caption("Executed by Tradier runner at 3:30 PM ET on weekdays.")
     for play in sig["options_plays"]:
         priority_label = "Primary" if play["priority"] == 1 else "Secondary"
         with st.expander(f"({priority_label}) {play['strategy']}", expanded=(play["priority"] == 1)):
             st.write(play["detail"])
 
-    # AI brief
+    # ── AI brief ───────────────────────────────────────────────────────────
     st.divider()
     st.subheader("Weekly AI Brief")
     st.caption("Optional. Calls Claude when you press the button.")
@@ -333,7 +333,7 @@ def render_dashboard() -> None:
                         date = f"{item['published']} | " if item.get("published") else ""
                         st.write(f"{item['symbol']}: {date}{item['title']}")
 
-    # Charts
+    # ── Charts ─────────────────────────────────────────────────────────────
     st.divider()
     st.subheader("Charts")
     col1, col2 = st.columns(2)
@@ -351,14 +351,16 @@ def render_dashboard() -> None:
     st.caption("HIVE RSI-14")
     st.line_chart(df[["HIVE_RSI14"]].tail(80))
 
-    # Data table
+    # ── Data table ─────────────────────────────────────────────────────────
     st.subheader("Recent Data")
     display_cols = ["HIVE", "HIVE_MA5", "HIVE_MA20", "HIVE_RSI14", "BTC", "BTC_MA20", "QQQ", "QQQ_MA50", "VIX"]
     st.dataframe(df[display_cols].tail(20).round(4), use_container_width=True)
 
-    # Download
+    # ── Download ───────────────────────────────────────────────────────────
     sig_export = {k: v for k, v in sig.items() if k != "options_plays"}
-    sig_export["options_plays"] = [{k: v for k, v in p.items()} for p in sig["options_plays"]]
+    sig_export["options_plays"] = [
+        {k: v for k, v in p.items()} for p in sig["options_plays"]
+    ]
     st.download_button(
         "Download JSON signal",
         data=json.dumps(sig_export, indent=2, default=str),

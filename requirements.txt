@@ -1,4 +1,4 @@
 streamlit>=1.37,<2
 yfinance>=0.2.40,<1
 pandas>=2.2,<3
-alpaca-py>=0.43,<1
+requests>=2.32,<3

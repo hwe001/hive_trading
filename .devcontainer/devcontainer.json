@@ -1,0 +1,21 @@
+{
+  "name": "Python 3",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["streamlit_app.py"]
+    },
+    "vscode": {
+      "settings": {},
+      "extensions": ["ms-python.python", "ms-python.vscode-pylance"]
+    }
+  },
+  "updateContentCommand": "[ -f requirements.txt ] && pip3 install --user -r requirements.txt; pip3 install --user streamlit; echo 'Ready'",
+  "postAttachCommand": {
+    "server": "streamlit run streamlit_app.py --server.enableCORS false --server.enableXsrfProtection false"
+  },
+  "portsAttributes": {
+    "8501": { "label": "HIVE Signal App", "onAutoForward": "openPreview" }
+  },
+  "forwardPorts": [8501]
+}

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Paper-trading runner for the HIVE long/short equity strategy.
+Paper-trading runner for the HIVE long/short equity strategy (Alpaca).
 
 Executes HIVE equity orders (long or short) on an Alpaca paper account.
-Options overlay signals are printed as advisory -- Alpaca paper does not support options.
+No options overlay — equity positions only. See tradier-options branch for options.
 
 Secrets required:
   HIVE_ALPACA_API_KEY_ID
@@ -85,6 +85,7 @@ def build_signal_row() -> pd.Series:
 
 
 def get_current_qty(trading_client: TradingClient, symbol: str) -> float:
+    """Returns current quantity (positive = long, negative = short, 0 = flat)."""
     try:
         pos = trading_client.get_open_position(symbol)
         return float(pos.qty)
@@ -163,16 +164,11 @@ def main() -> None:
     print(f"Reason:  {sig['reason']}")
     print()
     print("Signals (read-only):")
-    print(f"  BTC:  ${sig['btc']:>10,.0f}  MA20 ${sig['btc_ma20']:,.0f}  {'UP' if sig['btc_above_ma20'] else 'DOWN'}")
-    print(f"  QQQ:  ${sig['qqq']:>10.2f}  MA50 ${sig['qqq_ma50']:.2f}  {'UP' if sig['qqq_above_ma50'] else 'DOWN'}")
+    print(f"  BTC:  ${sig['btc']:>10,.0f}  MA20 ${sig['btc_ma20']:,.0f}  {'▲' if sig['btc_above_ma20'] else '▼'}")
+    print(f"  QQQ:  ${sig['qqq']:>10.2f}  MA50 ${sig['qqq_ma50']:.2f}  {'▲' if sig['qqq_above_ma50'] else '▼'}")
     print(f"  VIX:   {sig['vix']:.2f}")
     print(f"  HIVE: ${sig['hive']:>10.4f}  MA20 ${sig['hive_ma20']:.4f}  RSI {sig['hive_rsi14']:.0f}")
     print(f"  Account equity: ${equity:,.2f}")
-    print()
-    print("[OPTIONS ADVISORY -- not executed]")
-    for play in sig["options_plays"]:
-        print(f"  ({play['priority']}) {play['strategy']}")
-        print(f"     {play['detail']}")
     print()
 
     hive_shortable = check_shortable(trading_client, HIVE_SYMBOL)

@@ -1,0 +1,66 @@
+name: Run HIVE Call Overlay Experiment
+
+on:
+  schedule:
+    # 3:50 PM New York during daylight saving time.
+    - cron: "50 19 * * 1-5"
+    # 3:50 PM New York during standard time.
+    - cron: "50 20 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      submit_paper_option_orders:
+        description: "Submit Alpaca paper option orders?"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      bypass_350pm_gate:
+        description: "Bypass 3:50 PM New York time gate for manual test?"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+jobs:
+  call-overlay:
+    runs-on: ubuntu-latest
+
+    env:
+      HIVE_ALPACA_API_KEY_ID:     ${{ secrets.HIVE_ALPACA_API_KEY_ID }}
+      HIVE_ALPACA_API_SECRET_KEY: ${{ secrets.HIVE_ALPACA_API_SECRET_KEY }}
+      HIVE_EXECUTE_OPTIONS:       ${{ secrets.HIVE_EXECUTE_OPTIONS }}
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run HIVE call overlay experiment
+        shell: bash
+        run: |
+          args=()
+
+          submit="${{ github.event.inputs.submit_paper_option_orders }}"
+          if [[ "$submit" == "true" || "$HIVE_EXECUTE_OPTIONS" == "true" ]]; then
+            args+=(--execute)
+          fi
+
+          bypass="${{ github.event.inputs.bypass_350pm_gate }}"
+          if [[ "$bypass" == "true" ]]; then
+            args+=(--force-run)
+          fi
+
+          python hive_call_overlay_runner.py "${args[@]}"
